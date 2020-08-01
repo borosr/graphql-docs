@@ -12,7 +12,7 @@ func TestInit(t *testing.T) {
 		Mutation: Mutation,
 		Subscription: Subscription,
 	})
-	Init(s)
+	Init(s, Config{pretty: true})
 }
 
 var Query = graphql.NewObject(graphql.ObjectConfig{

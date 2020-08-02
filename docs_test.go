@@ -11,7 +11,7 @@ func TestInit(t *testing.T) {
 		Mutation: Mutation,
 		Subscription: Subscription,
 	})
-	resp := Init(s, Config{pretty: true})
+	resp := Init(s, Config{sysout: true, pretty: true})
 	if resp == "" {
 		t.Error("Response should not be empty!")
 	}

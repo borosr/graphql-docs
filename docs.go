@@ -182,7 +182,6 @@ type Config struct {
 	pretty   bool
 	html     bool
 	md       bool
-	json     bool
 	filename string
 }
 

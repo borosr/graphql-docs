@@ -12,7 +12,16 @@ func TestInit(t *testing.T) {
 		Mutation: Mutation,
 		Subscription: Subscription,
 	})
-	Init(s, Config{pretty: true})
+	Init(s, Config{sysout: true, pretty: true})
+}
+
+func TestInitHtml(t *testing.T) {
+	s, _ := graphql.NewSchema(graphql.SchemaConfig{
+		Query: Query,
+		Mutation: Mutation,
+		Subscription: Subscription,
+	})
+	Init(s, Config{html: true})
 }
 
 var Query = graphql.NewObject(graphql.ObjectConfig{
@@ -35,6 +44,7 @@ var Query = graphql.NewObject(graphql.ObjectConfig{
 var Graph = graphql.NewObject(
 	graphql.ObjectConfig{
 		Name: "Graph",
+		Description: "A dependency graph of the requested go project.",
 		Fields: graphql.Fields{
 			"nodes": &graphql.Field{
 				Type: graphql.NewList(Node),
@@ -49,6 +59,7 @@ var Graph = graphql.NewObject(
 var Edge = graphql.NewObject(
 	graphql.ObjectConfig{
 		Name: "Edge",
+		Description: "An edge represents the connection between two go packages",
 		Fields: graphql.Fields{
 			"from": &graphql.Field{
 				Type: graphql.String,

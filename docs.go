@@ -2,6 +2,7 @@ package docs
 
 import (
 	"fmt"
+	"log"
 	"strings"
 
 	"github.com/graphql-go/graphql"
@@ -10,72 +11,83 @@ import (
 const typUndefined = "Undefined"
 
 func Init(s graphql.Schema, c Config) {
-	sb := strings.Builder{}
-	d := docs{c}
-	d.run(s.QueryType(), &sb)
-	d.run(s.MutationType(), &sb)
-	d.run(s.SubscriptionType(), &sb)
-	fmt.Println(sb.String())
+	d := &docs{c: c, sOut: &strings.Builder{}, htmlOut: make([]htmlTemplate, 0)}
+	d.run(s.QueryType())
+	d.run(s.MutationType())
+	d.run(s.SubscriptionType())
+	if c.sysout {
+		fmt.Println(d.sOut.String())
+	}
+	if c.html {
+		if err := d.createHtml(); err != nil {
+			log.Fatal(err)
+		}
+	}
 }
 
-func (d docs) run(o *graphql.Object, out *strings.Builder) {
+func (d *docs) run(o *graphql.Object) {
 	if o == nil {
 		return
 	}
-	format := d.tabs(0)+"%s"
+	format := d.tabs(0) + "%s"
 	if d.c.pretty {
 		format += "{"
 	}
-	out.WriteString(fmt.Sprintf(format+"\n", strings.ToLower(o.PrivateName)))
-	d.walkFields(o.Fields(), 0, out)
+	d.sOut.WriteString(fmt.Sprintf(format+"\n", strings.ToLower(o.PrivateName)))
+	d.walkFields(o.Fields(), 0)
 }
 
-func (d docs) walkFields(fdm graphql.FieldDefinitionMap, i int, out *strings.Builder) {
+func (d *docs) walkFields(fdm graphql.FieldDefinitionMap, i int) {
 	i++
 	for k, f := range fdm {
 		if f == nil {
 			continue
 		}
-		d.display(i, k, f.Args, out)
+		d.display(i, k, f)
 		if d.c.pretty {
 			if _, prim := getTypeOrValue(f.Type, true); !prim {
-				out.WriteString("{")
+				d.sOut.WriteString("{")
 			}
 		}
-		out.WriteString("\n")
-		d.castField(f.Type, i, out)
+		d.sOut.WriteString("\n")
+		d.castField(f.Type, i)
 	}
 	if d.c.pretty {
-		out.WriteString(d.tabs(i-1)+"}\n")
+		d.sOut.WriteString(d.tabs(i-1) + "}\n")
 	}
 }
 
-func (d docs) display(i int, k string, args []*graphql.Argument, out *strings.Builder) {
+func (d *docs) display(i int, k string, f *graphql.FieldDefinition) {
 	format := d.tabs(i) + "%s"
-	if a := d.walkArgs(args); len(a) == 0 {
-		out.WriteString(fmt.Sprintf(format, k))
+	if a := d.walkArgs(f.Args, f.Name); len(a) == 0 {
+		d.sOut.WriteString(fmt.Sprintf(format, k))
 	} else {
 		format += "(%s)"
-		out.WriteString(fmt.Sprintf(format, k, a))
+		d.sOut.WriteString(fmt.Sprintf(format, k, a))
 	}
 }
 
-
-func (d docs) castField(f graphql.Output, i int, out *strings.Builder) {
+func (d *docs) castField(f graphql.Output, i int) {
 	if o, ok := f.(*graphql.Object); ok {
-		d.walkFields(o.Fields(), i, out)
+		d.addHtml(htmlTemplate{
+			Name:        f.Name(),
+			Description: o.PrivateDescription,
+			Typ:         "",
+			Kind:        kindField,
+		})
+		d.walkFields(o.Fields(), i)
 	} else if o, ok := f.(*graphql.List); ok {
-		d.castField(o.OfType, i, out)
+		d.castField(o.OfType, i)
 	}
 }
 
-func (d docs) walkArgs(args []*graphql.Argument) string {
+func (d *docs) walkArgs(args []*graphql.Argument, fieldName string) string {
 	var result = make([]string, 0)
 	for _, arg := range args {
 		if arg == nil {
 			continue
 		}
-		result = d.castInputObj(arg.Type, arg.PrivateName, result)
+		result = d.castInputObj(arg.Type, arg.PrivateName, arg.PrivateDescription, fieldName, result)
 	}
 	if len(result) == 0 {
 		return ""
@@ -83,18 +95,24 @@ func (d docs) walkArgs(args []*graphql.Argument) string {
 	return strings.Join(result, ",")
 }
 
-func (d docs) castInputObj(typ graphql.Input, parent string, data []string) []string {
+func (d *docs) castInputObj(typ graphql.Input, parentName, parentDescription, fieldName string, data []string) []string {
+	d.addHtml(htmlTemplate{
+		Name:        parentName,
+		Description: parentDescription,
+		Typ:         getType(typ),
+		Kind:        kindArg,
+		Parent:      fieldName,
+	})
 	if o, ok := typ.(*graphql.InputObject); ok {
 		fields := o.Fields()
 		var r = make([]string, 0)
 		for _, f := range fields {
-			r = d.castInputObj(f.Type, f.PrivateName, r)
+			r = d.castInputObj(f.Type, f.PrivateName, f.PrivateDescription, fieldName, r)
 		}
-		return append(data, parent+":{"+strings.Join(r, ",")+"}")
+		return append(data, parentName+":{"+strings.Join(r, ",")+"}")
 	} else {
-
 		typeOrValue, _ := getTypeOrValue(typ, d.c.pretty)
-		return append(data, parent+":"+typeOrValue)
+		return append(data, parentName+":"+typeOrValue)
 	}
 }
 
@@ -140,9 +158,26 @@ func (d docs) tabs(n int) string {
 }
 
 type docs struct {
-	c Config
+	c       Config
+	sOut    *strings.Builder
+	htmlOut []htmlTemplate
 }
 
 type Config struct {
+	sysout bool
 	pretty bool
+	html   bool
+}
+
+func (d *docs) addHtml(h htmlTemplate) {
+	for _, t := range d.htmlOut {
+		if t.Name == h.Name && t.Description == h.Description {
+			return
+		}
+	}
+	d.htmlOut = append(d.htmlOut, h)
+}
+
+func (d *docs) createHtml() error {
+	return buildHtml(d.htmlOut)
 }

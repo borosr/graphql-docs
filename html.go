@@ -1,38 +1,25 @@
 package docs
 
 import (
-	"os"
+	"bytes"
+	"io/ioutil"
 	"sort"
 	"strings"
 	"text/template"
 )
 
-const (
-	kindField = "field"
-	kindArg   = "argument"
-)
-
-type kind string
-
-type htmlTemplate struct {
-	Name        string
-	Description string
-	Typ         string
-	Kind        kind
-	Parent      string
-}
-
-func buildHtml(templates []htmlTemplate) error {
+func buildHtml(templates []pattern, filename string) (string, error) {
 	parse, err := template.New("html").Funcs(template.FuncMap{
 		"ToLower": strings.ToLower,
 	}).Parse(htmlTemplateStr)
 	if err != nil {
-		return err
+		return "", err
 	}
-	f, err := os.Create("documentation.html")
-	if err != nil {
-		return err
+	var outputFile = filename
+	if outputFile == "" {
+		outputFile = defaultFilename
 	}
+	o := bytes.NewBufferString("")
 	sort.Slice(templates, func(i, j int) bool {
 		a := templates[i]
 		b := templates[j]
@@ -44,10 +31,14 @@ func buildHtml(templates []htmlTemplate) error {
 			return false
 		}
 	})
-	if err := parse.Execute(f, templates); err != nil {
-		return err
+	if err := parse.Execute(o, templates); err != nil {
+		return "", err
 	}
-	return nil
+	all, err := ioutil.ReadAll(o)
+	if err != nil {
+		return "", err
+	}
+	return string(all), ioutil.WriteFile(outputFile+".html", all, 0666)
 }
 
 const htmlTemplateStr = `<!doctype html>

@@ -5,14 +5,16 @@ import (
 
 	"github.com/graphql-go/graphql"
 )
-
 func TestInit(t *testing.T) {
 	s, _ := graphql.NewSchema(graphql.SchemaConfig{
 		Query: Query,
 		Mutation: Mutation,
 		Subscription: Subscription,
 	})
-	Init(s, Config{sysout: true, pretty: true})
+	resp := Init(s, Config{pretty: true})
+	if resp == "" {
+		t.Error("Response should not be empty!")
+	}
 }
 
 func TestInitHtml(t *testing.T) {
@@ -21,7 +23,22 @@ func TestInitHtml(t *testing.T) {
 		Mutation: Mutation,
 		Subscription: Subscription,
 	})
-	Init(s, Config{html: true})
+	resp := Init(s, Config{html: true})
+	if resp == "" {
+		t.Error("Response should not be empty!")
+	}
+}
+
+func TestInitMd(t *testing.T) {
+	s, _ := graphql.NewSchema(graphql.SchemaConfig{
+		Query: Query,
+		Mutation: Mutation,
+		Subscription: Subscription,
+	})
+	resp := Init(s, Config{md: true})
+	if resp == "" {
+		t.Error("Response should not be empty!")
+	}
 }
 
 var Query = graphql.NewObject(graphql.ObjectConfig{
@@ -29,6 +46,7 @@ var Query = graphql.NewObject(graphql.ObjectConfig{
 	Fields: graphql.Fields{
 		"graph": &graphql.Field{
 			Type:    Graph,
+			Description: "A dependency graph of the requested go project.",
 			Args: graphql.FieldConfigArgument{
 				"repo": &graphql.ArgumentConfig{
 					Type: graphql.String,
@@ -44,12 +62,12 @@ var Query = graphql.NewObject(graphql.ObjectConfig{
 var Graph = graphql.NewObject(
 	graphql.ObjectConfig{
 		Name: "Graph",
-		Description: "A dependency graph of the requested go project.",
 		Fields: graphql.Fields{
 			"nodes": &graphql.Field{
 				Type: graphql.NewList(Node),
 			},
 			"edges": &graphql.Field{
+				Description: "An edge represents the connection between two go packages",
 				Type: graphql.NewList(Edge),
 			},
 		},
@@ -59,7 +77,6 @@ var Graph = graphql.NewObject(
 var Edge = graphql.NewObject(
 	graphql.ObjectConfig{
 		Name: "Edge",
-		Description: "An edge represents the connection between two go packages",
 		Fields: graphql.Fields{
 			"from": &graphql.Field{
 				Type: graphql.String,

@@ -8,21 +8,33 @@ import (
 	"github.com/graphql-go/graphql"
 )
 
-const typUndefined = "Undefined"
+const (
+	typUndefined    = "Undefined"
+	defaultFilename = "documentation"
+)
 
-func Init(s graphql.Schema, c Config) {
-	d := &docs{c: c, sOut: &strings.Builder{}, htmlOut: make([]htmlTemplate, 0)}
+func Init(s graphql.Schema, c Config) string {
+	d := &docs{c: c, sOut: &strings.Builder{}, patterns: make([]pattern, 0)}
 	d.run(s.QueryType())
 	d.run(s.MutationType())
 	d.run(s.SubscriptionType())
+	out := d.sOut.String()
 	if c.sysout {
-		fmt.Println(d.sOut.String())
+		fmt.Println(out)
 	}
 	if c.html {
 		if err := d.createHtml(); err != nil {
 			log.Fatal(err)
 		}
+		return d.html
 	}
+	if c.md {
+		if err := d.createMd(); err != nil {
+			log.Fatal(err)
+		}
+		return d.md
+	}
+	return out
 }
 
 func (d *docs) run(o *graphql.Object) {
@@ -43,6 +55,12 @@ func (d *docs) walkFields(fdm graphql.FieldDefinitionMap, i int) {
 		if f == nil {
 			continue
 		}
+		d.addPattern(pattern{
+			Name:        f.Name,
+			Description: f.Description,
+			Typ:         getType(f.Type),
+			Kind:        kindField,
+		})
 		d.display(i, k, f)
 		if d.c.pretty {
 			if _, prim := getTypeOrValue(f.Type, true); !prim {
@@ -69,12 +87,6 @@ func (d *docs) display(i int, k string, f *graphql.FieldDefinition) {
 
 func (d *docs) castField(f graphql.Output, i int) {
 	if o, ok := f.(*graphql.Object); ok {
-		d.addHtml(htmlTemplate{
-			Name:        f.Name(),
-			Description: o.PrivateDescription,
-			Typ:         "",
-			Kind:        kindField,
-		})
 		d.walkFields(o.Fields(), i)
 	} else if o, ok := f.(*graphql.List); ok {
 		d.castField(o.OfType, i)
@@ -96,7 +108,7 @@ func (d *docs) walkArgs(args []*graphql.Argument, fieldName string) string {
 }
 
 func (d *docs) castInputObj(typ graphql.Input, parentName, parentDescription, fieldName string, data []string) []string {
-	d.addHtml(htmlTemplate{
+	d.addPattern(pattern{
 		Name:        parentName,
 		Description: parentDescription,
 		Typ:         getType(typ),
@@ -158,26 +170,39 @@ func (d docs) tabs(n int) string {
 }
 
 type docs struct {
-	c       Config
-	sOut    *strings.Builder
-	htmlOut []htmlTemplate
+	c        Config
+	sOut     *strings.Builder
+	md       string
+	html     string
+	patterns []pattern
 }
 
 type Config struct {
-	sysout bool
-	pretty bool
-	html   bool
+	sysout   bool
+	pretty   bool
+	html     bool
+	md       bool
+	json     bool
+	filename string
 }
 
-func (d *docs) addHtml(h htmlTemplate) {
-	for _, t := range d.htmlOut {
+func (d *docs) addPattern(h pattern) {
+	for _, t := range d.patterns {
 		if t.Name == h.Name && t.Description == h.Description {
 			return
 		}
 	}
-	d.htmlOut = append(d.htmlOut, h)
+	d.patterns = append(d.patterns, h)
 }
 
 func (d *docs) createHtml() error {
-	return buildHtml(d.htmlOut)
+	var err error
+	d.html, err = buildHtml(d.patterns, d.c.filename)
+	return err
+}
+
+func (d *docs) createMd() error {
+	var err error
+	d.md, err = buildMd(d.patterns, d.c.filename)
+	return err
 }

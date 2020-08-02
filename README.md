@@ -33,7 +33,7 @@ Config{
 ```
 
 ### Output on console (with `sysout: true, pretty: true`)
-```json
+```text
 query{
 	graph(repo:"",filter:{value:"",filterIn:""}){
 		nodes{

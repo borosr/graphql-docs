@@ -97,5 +97,5 @@ query{
 ```
 ### Output in `html` or `md`
 You can check them, after pulling this repo and a `go test .`
-# Licence
-[Licence](LICENCE)
+# License
+[License](LICENSE)

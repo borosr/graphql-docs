@@ -15,24 +15,24 @@ import (
 
 func main() {
     s, _ := graphql.NewSchema(graphql.SchemaConfig{
-        Query: Query,
+        Query: Query(), // some query
     })
-    docs.Init(s, Config{html: true}) // creates returns the documentation's content
+    docs.Init(s, docs.Config{Html: true}) // creates returns the documentation's content
 }
 ```
 ### Config values:
 ```go
 Config{
-    sysout:   true,
-    pretty:   true,
-    html:     true,
-    md:       true,
-    json:     true,
-    filename: "graphql-docs",
+    Sysout:   true,
+    Pretty:   true,
+    Html:     true,
+    Md:       true,
+    Json:     true,
+    Filename: "graphql-docs",
 }
 ```
 
-### Output on console (with `sysout: true, pretty: true`)
+### Output on console (with `Sysout: true, Pretty: true`)
 ```text
 query{
 	graph(repo:"",filter:{value:"",filterIn:""}){

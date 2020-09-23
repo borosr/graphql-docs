@@ -11,7 +11,7 @@ func TestInit(t *testing.T) {
 		Mutation: Mutation,
 		Subscription: Subscription,
 	})
-	resp := Init(s, Config{sysout: true, pretty: true})
+	resp := Init(s, Config{Sysout: true, Pretty: true})
 	if resp == "" {
 		t.Error("Response should not be empty!")
 	}
@@ -23,7 +23,7 @@ func TestInitHtml(t *testing.T) {
 		Mutation: Mutation,
 		Subscription: Subscription,
 	})
-	resp := Init(s, Config{html: true})
+	resp := Init(s, Config{Html: true})
 	if resp == "" {
 		t.Error("Response should not be empty!")
 	}
@@ -35,7 +35,7 @@ func TestInitMd(t *testing.T) {
 		Mutation: Mutation,
 		Subscription: Subscription,
 	})
-	resp := Init(s, Config{md: true})
+	resp := Init(s, Config{Md: true})
 	if resp == "" {
 		t.Error("Response should not be empty!")
 	}

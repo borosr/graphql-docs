@@ -19,16 +19,16 @@ func Init(s graphql.Schema, c Config) string {
 	d.run(s.MutationType())
 	d.run(s.SubscriptionType())
 	out := d.sOut.String()
-	if c.sysout {
+	if c.Sysout {
 		fmt.Println(out)
 	}
-	if c.html {
+	if c.Html {
 		if err := d.createHtml(); err != nil {
 			log.Fatal(err)
 		}
 		return d.html
 	}
-	if c.md {
+	if c.Md {
 		if err := d.createMd(); err != nil {
 			log.Fatal(err)
 		}
@@ -42,7 +42,7 @@ func (d *docs) run(o *graphql.Object) {
 		return
 	}
 	format := d.tabs(0) + "%s"
-	if d.c.pretty {
+	if d.c.Pretty {
 		format += "{"
 	}
 	d.sOut.WriteString(fmt.Sprintf(format+"\n", strings.ToLower(o.PrivateName)))
@@ -62,7 +62,7 @@ func (d *docs) walkFields(fdm graphql.FieldDefinitionMap, i int) {
 			Kind:        kindField,
 		})
 		d.display(i, k, f)
-		if d.c.pretty {
+		if d.c.Pretty {
 			if _, prim := getTypeOrValue(f.Type, true); !prim {
 				d.sOut.WriteString("{")
 			}
@@ -70,7 +70,7 @@ func (d *docs) walkFields(fdm graphql.FieldDefinitionMap, i int) {
 		d.sOut.WriteString("\n")
 		d.castField(f.Type, i)
 	}
-	if d.c.pretty {
+	if d.c.Pretty {
 		d.sOut.WriteString(d.tabs(i-1) + "}\n")
 	}
 }
@@ -123,7 +123,7 @@ func (d *docs) castInputObj(typ graphql.Input, parentName, parentDescription, fi
 		}
 		return append(data, parentName+":{"+strings.Join(r, ",")+"}")
 	} else {
-		typeOrValue, _ := getTypeOrValue(typ, d.c.pretty)
+		typeOrValue, _ := getTypeOrValue(typ, d.c.Pretty)
 		return append(data, parentName+":"+typeOrValue)
 	}
 }
@@ -161,7 +161,7 @@ func (d docs) tabs(n int) string {
 	}
 	b := strings.Builder{}
 	for i := 0; i < n; i++ {
-		if !d.c.pretty {
+		if !d.c.Pretty {
 			b.WriteString("|")
 		}
 		b.WriteString("\t")
@@ -178,11 +178,11 @@ type docs struct {
 }
 
 type Config struct {
-	sysout   bool
-	pretty   bool
-	html     bool
-	md       bool
-	filename string
+	Sysout   bool
+	Pretty   bool
+	Html     bool
+	Md       bool
+	Filename string
 }
 
 func (d *docs) addPattern(h pattern) {
@@ -196,12 +196,12 @@ func (d *docs) addPattern(h pattern) {
 
 func (d *docs) createHtml() error {
 	var err error
-	d.html, err = buildHtml(d.patterns, d.c.filename)
+	d.html, err = buildHtml(d.patterns, d.c.Filename)
 	return err
 }
 
 func (d *docs) createMd() error {
 	var err error
-	d.md, err = buildMd(d.patterns, d.c.filename)
+	d.md, err = buildMd(d.patterns, d.c.Filename)
 	return err
 }
